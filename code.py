@@ -10,8 +10,10 @@ from adafruit_midi.note_off import NoteOff
 
 
 class MidiFighter:
+    # init variables
     buttons = []
     leds = []
+    # init pins
     buttonPins = [board.GP6, board.GP7]
     ledPins = [1,2]
     midiNotes = [60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75]
@@ -22,6 +24,7 @@ class MidiFighter:
         self.loop()
     
     def initButtons(self):
+        # init buttons and save them to global buttons
         for buttonPin in self.buttonPins:
             note_pin = digitalio.DigitalInOut(buttonPin)
             note_pin.direction = digitalio.Direction.INPUT
@@ -38,8 +41,11 @@ class MidiFighter:
             
     def loop(self):
         midi = adafruit_midi.MIDI(midi_out=usb_midi.ports[1], out_channel=0)
+        pinCounts = len(self.buttonPins)
         while True:
-            for key, _ in enumerate(self.buttonPins):
+            # Loop through length of buttonPins
+            for key in range(pinCounts):
+                # If button is pushed then light up LED, and send midi
                 if self.buttons[key].value is False:
                     print("PUSHED")
                     midi.send(NoteOn(self.midiNotes[key], 120))
