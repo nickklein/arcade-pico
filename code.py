@@ -13,18 +13,23 @@ class MidiFighter:
     # init variables
     buttons = []
     leds = []
+    midiNotes = []
+    midiList = {0: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], 1: [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,31]}
     armedButton = None
     # init pins
     buttonPins = [board.GP6, board.GP7]
     armedButtonPin = board.GP11
     ledPins = [1,2]
-    midiNotes = [60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75]
 
     def init(self):
+        self.assignMidiNotes(0)
         self.initButtons()
         self.initArmedButton()
         self.initLEDs()
         self.loop()
+
+    def assignMidiNotes(self, buttonPosition):
+        self.midiNotes = self.midiList[buttonPosition]
 
     def initButtons(self):
         # init buttons and save them to global buttons
@@ -39,7 +44,7 @@ class MidiFighter:
         pin.direction = digitalio.Direction.INPUT
         pin.pull = digitalio.Pull.UP
         self.armedButton = pin
-        
+
     def initLEDs(self):
         i2c = busio.I2C(board.GP1, board.GP0, frequency=1000000)
         aw = adafruit_aw9523.AW9523(i2c)
@@ -47,7 +52,7 @@ class MidiFighter:
             led_pin = aw.get_pin(ledPin)
             led_pin.direction = digitalio.Direction.OUTPUT
             self.leds.append(led_pin)
-            
+
     # Main Loop that makes the whole thing work
     def loop(self):
         # initilize midi channel
@@ -57,37 +62,41 @@ class MidiFighter:
         while True:
             isArmed = self.armedButtonListener(pinCounts)
             # Only run midiListener if armedButton is off
-            if isArmed is False: 
+            if isArmed is False:
                 self.midiListener(midi, pinCounts)
             time.sleep(0.1)
-    
+
     # Listen to the armed button
     # Armed Button allows the user to change the midi notes
     def armedButtonListener(self, pinCounts):
         # If button is pushed
         if self.armedButton.value is False:
-            self.turnOnArcadeLights(pinCounts)
-            # Listen to arcade button press
-            while True:
-                for buttonKey in range(pinCounts):
-                    # If button is pushed then light up LED, and send midi
-                    if self.buttons[buttonKey].value is False:
-                        self.turnOffArcadeLights(pinCounts)
-                        time.sleep(2)
-                        return False
+            return self.armedButtonEvent(pinCounts)
         else:
             return False
-    
+
+    # Execute armed event
+    def armedButtonEvent(self, pinCounts):
+        self.turnOnArcadeLights(pinCounts)
+        while True:
+            for buttonKey in range(pinCounts):
+                # If button is pushed then light up LED, and send midi
+                if self.buttons[buttonKey].value is False:
+                    self.assignMidiNotes(buttonKey)
+                    self.turnOffArcadeLights(pinCounts)
+                    time.sleep(1)
+                    return False
+
     # Turn on arcade button lights
     def turnOnArcadeLights(self, pinCounts):
         for key in range(pinCounts):
             self.leds[key].value = True
-    
+
     # Turn off arcade button lights
     def turnOffArcadeLights(self, pinCounts):
         for key in range(pinCounts):
-            self.leds[key].value = False     
-       
+            self.leds[key].value = False
+
     def midiListener(self, midi, pinCounts):
         # Loop through length of buttonPins
         for key in range(pinCounts):
